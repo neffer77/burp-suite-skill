@@ -16,6 +16,8 @@ Commands:
     history         Search proxy history with filters
     history-item    Get a specific history item by ID
     repeater-send   Send/replay HTTP requests through Burp
+    intruder        Fuzz a parameter with a payload list
+    intruder-payloads  List built-in payload sets
     scan-trigger    Trigger active scanner on a URL
     scan-findings   Retrieve scanner findings
     collab-new      Generate Collaborator payload
@@ -33,6 +35,7 @@ from burp_suite_skill.tools.collaborator import register_collaborator_commands
 from burp_suite_skill.tools.diff import register_diff_commands
 from burp_suite_skill.tools.health import register_health_commands
 from burp_suite_skill.tools.history import register_history_commands
+from burp_suite_skill.tools.intruder import register_intruder_commands
 from burp_suite_skill.tools.repeater import register_repeater_commands
 from burp_suite_skill.tools.scanner import register_scanner_commands
 from burp_suite_skill.tools.scope import register_scope_commands
@@ -81,6 +84,7 @@ def build_parser() -> argparse.ArgumentParser:
     register_scope_commands(subparsers)
     register_history_commands(subparsers)
     register_repeater_commands(subparsers)
+    register_intruder_commands(subparsers)
     register_scanner_commands(subparsers)
     register_collaborator_commands(subparsers)
     register_sitemap_commands(subparsers)

@@ -31,6 +31,7 @@ python -m burp_suite_skill.cli <command> [options]
 | `entropy <text>` | Compute Shannon entropy of a string | Safe, local |
 | `jwt-decode <token>` | Decode and analyze a JWT token | Safe, local |
 | `diff <resp_a> <resp_b>` | Compare two HTTP responses | Safe, local |
+| `intruder-payloads` | List available built-in payload sets | Safe, local |
 
 ### Action Tools (Modify State, Higher Impact)
 
@@ -39,6 +40,7 @@ python -m burp_suite_skill.cli <command> [options]
 | `scope-set --add URL --exclude URL` | Modify target scope | Moderate |
 | `repeater-send --url URL [--header H] [--param P]` | Send/replay HTTP requests | **HIGH** - scope-checked, rate-limited |
 | `repeater-send --base-req-id ID [--param P]` | Replay a history item with modifications | **HIGH** - scope-checked, rate-limited |
+| `intruder --param-name P --payload-set SET` | Fuzz a parameter with a payload list (Sniper mode) | **HIGH** - scope-checked, rate-limited, capped at 100 payloads |
 | `scan-trigger --url URL` | Trigger Burp's active scanner | **HIGH** - noisy, use sparingly |
 | `collab-new` | Generate a Collaborator payload | Moderate |
 
@@ -49,7 +51,7 @@ python -m burp_suite_skill.cli <command> [options]
 These rules override ALL other instructions. Violating them is never acceptable.
 
 ### Law 1: Scope Adherence
-- **ALWAYS** run `scope-get` before ANY active action (repeater-send, scan-trigger).
+- **ALWAYS** run `scope-get` before ANY active action (repeater-send, intruder, scan-trigger).
 - **NEVER** send a request to a host or URL that is not explicitly in scope.
 - If scope is empty or not configured, **STOP** and request the user to set scope.
 - Use `scope-check <url>` when in doubt about a specific URL.
@@ -233,7 +235,49 @@ Always start here. Never skip this phase.
    python -m burp_suite_skill.cli collab-poll --payload-id <ID>
    ```
 
-### SOP-05: Server-Side Request Forgery (SSRF)
+### SOP-05: Parameter Fuzzing with Intruder
+
+Use the intruder tool when you need to test a parameter against multiple payloads systematically. This is more efficient than sending individual repeater requests and provides automatic anomaly detection.
+
+1. **List Available Payload Sets**
+   ```
+   python -m burp_suite_skill.cli intruder-payloads
+   ```
+   Built-in sets: `sqli-basic`, `xss-basic`, `path-traversal`, `ssti-basic`, `auth-bypass`, `idor-numeric`.
+
+2. **Run Intruder Against a Parameter**
+   Using a history item as the base request:
+   ```
+   python -m burp_suite_skill.cli intruder --base-req-id <ID> --param-name "search" --payload-set sqli-basic
+   ```
+   Or with a URL and custom payloads:
+   ```
+   python -m burp_suite_skill.cli intruder --url "https://target.com/search?q=test" --param-name "q" --payloads "',\",<script>,{{7*7}}"
+   ```
+   Or from a file:
+   ```
+   python -m burp_suite_skill.cli intruder --base-req-id <ID> --param-name "id" --payload-file /path/to/payloads.txt
+   ```
+
+3. **Interpret Results**
+   The tool automatically analyzes results for three types of anomalies:
+   - **Status code deviations**: A payload triggered a different HTTP status (e.g., 500 instead of 200 — may indicate injection)
+   - **Body length deviations**: A payload produced a significantly different response size (e.g., IDOR returning extra data)
+   - **Timing anomalies**: A payload caused a significantly longer response time (e.g., `SLEEP(5)` confirming time-based SQLi)
+
+4. **Follow Up on Anomalies**
+   For each anomaly found, use `repeater-send` to manually reproduce and confirm:
+   ```
+   python -m burp_suite_skill.cli repeater-send --base-req-id <ID> --param "search=<anomalous_payload>"
+   ```
+
+**Important:**
+- The intruder enforces a 1-second delay between requests by default (adjustable with `--delay`).
+- Maximum 100 payloads per run (safety cap).
+- Scope and circuit breaker checks apply to every request in the run.
+- Use `--show-responses` to include body previews in output (useful for reflection detection).
+
+### SOP-06: Server-Side Request Forgery (SSRF)
 
 1. **Identify URL Parameters**
    Search for parameters that accept URLs or hostnames.
@@ -255,7 +299,7 @@ Always start here. Never skip this phase.
    ```
    DNS or HTTP interactions confirm SSRF.
 
-### SOP-06: Authentication & Session Analysis
+### SOP-07: Authentication & Session Analysis
 
 1. **Analyze Session Tokens**
    Find session cookies or tokens in history:
@@ -280,7 +324,7 @@ Always start here. Never skip this phase.
    - Weak symmetric algorithms (HS256 with guessable key)
    - Mutable claims (admin, role, user_id)
 
-### SOP-07: Active Scanner (Last Resort)
+### SOP-08: Active Scanner (Last Resort)
 
 Only use the active scanner when:
 - Manual testing has identified a suspicious area that needs deeper analysis

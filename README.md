@@ -21,6 +21,7 @@ Claude Code Agent
         │   ├── scope.py         ← scope-get, scope-set, scope-check
         │   ├── history.py       ← proxy history search
         │   ├── repeater.py      ← send/replay HTTP requests
+        │   ├── intruder.py     ← parameter fuzzing with payload lists
         │   ├── scanner.py       ← active scanner control
         │   ├── collaborator.py  ← OAST payload management
         │   ├── sitemap.py       ← site map retrieval
@@ -68,6 +69,11 @@ burp-cli history-item 42
 # Send/replay requests (scope-enforced, rate-limited)
 burp-cli repeater-send --url "https://target.com/api/users"
 burp-cli repeater-send --base-req-id 42 --param "user_id=101"
+
+# Intruder-style fuzzing
+burp-cli intruder-payloads                      # list built-in payload sets
+burp-cli intruder --base-req-id 42 --param-name "q" --payload-set sqli-basic
+burp-cli intruder --url "https://target.com/search?q=test" --param-name "q" --payloads "',\",<script>"
 
 # Scanner
 burp-cli scan-trigger --url "https://target.com/login"

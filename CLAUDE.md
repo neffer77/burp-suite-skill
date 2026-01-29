@@ -24,6 +24,7 @@ Claude Code Agent
         │   ├── scope.py          (scope-get, scope-set, scope-check)
         │   ├── history.py        (history search, history item)
         │   ├── repeater.py       (repeater-send with modifications)
+        │   ├── intruder.py      (parameter fuzzing with payload lists)
         │   ├── scanner.py        (scan-trigger, scan-findings)
         │   ├── collaborator.py   (collab-new, collab-poll)
         │   ├── sitemap.py        (sitemap fetch)
